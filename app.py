@@ -1,7 +1,6 @@
 import streamlit as st
 from datetime import date
 
-# Configuração da página para a Saneflow
 st.set_page_config(page_title="Vistoria EEE - Saneflow", page_icon="💧", layout="centered")
 
 # --- TELA DE LOGIN ---
@@ -15,7 +14,6 @@ if senha_digitada != "SANEFLOW2026":
 st.title("💧 Vistoria Técnica - EEEs")
 st.markdown("**Saneflow Engenharia** | Preencha os dados em campo. Campos com * são obrigatórios.")
 
-# Lista Oficial das 44 EEEs
 lista_eees = [
     "Jacarepaguá (JPA)", "Itanhangá", "Amil", "Olímpica", "Taquara V", 
     "Jardim Clarice", "Rio das Pedras II", "Quintas do Rio", "Barra Bonita", "Henfil", 
@@ -28,7 +26,6 @@ lista_eees = [
     "Jose Duarte", "Vila da Amizade", "CTS Canal das Taxas", "Chico City"
 ]
 
-# Criação das 7 Abas
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "1. Cadastro", "2. Extravasor", "3. Operacional", 
     "4. Elétrica", "5. Automação", "6. Segurança", "7. Fechar"
@@ -47,11 +44,10 @@ with tab1:
     
 with tab2:
     st.header("2. Extravasor (Hidráulica e Civil)")
-    tipo_extravasor = st.selectbox("Tipo de estrutura", ["Selecione...", "Vertedor", "Tubo", "Canal", "Caixa", "Outro", "N/A"])
     
-    # Campo Mágico para "Outro"
+    tipo_extravasor = st.selectbox("Tipo de estrutura", ["Selecione...", "Vertedor", "Tubo", "Canal", "Caixa", "Outro", "N/A"])
     if tipo_extravasor == "Outro":
-        tipo_extravasor_outro = st.text_input("Especifique o tipo de estrutura:")
+        tipo_extravasor = st.text_input("Qual o tipo de estrutura?")
 
     st.subheader("Dimensões Medidas")
     col1, col2 = st.columns(2)
@@ -62,8 +58,14 @@ with tab2:
         altura_soleira = st.number_input("Altura de Soleira (m)", min_value=0.0, format="%.2f")
         cota_soleira = st.number_input("Cota da soleira", min_value=0.0, format="%.2f")
         
-    estado_conservacao = st.selectbox("Estado de conservação", ["Bom", "Regular", "Ruim"])
-    regime_escoamento = st.radio("Regime de escoamento", ["Livre", "Afogado"])
+    estado_conservacao = st.selectbox("Estado de conservação", ["Bom", "Regular", "Ruim", "Outro"])
+    if estado_conservacao == "Outro":
+        estado_conservacao = st.text_input("Descreva o estado de conservação:")
+        
+    regime_escoamento = st.radio("Regime de escoamento", ["Livre", "Afogado", "Outro"])
+    if regime_escoamento == "Outro":
+        regime_escoamento = st.text_input("Descreva o regime de escoamento:")
+        
     obs_extravasor = st.text_area("Presença de sólidos, gordura, assoreamento ou maré:")
     
     st.subheader("📸 Fotos Obrigatórias (Extravasor)")
@@ -87,10 +89,20 @@ with tab3:
 
 with tab4:
     st.header("4. Infraestrutura Elétrica")
-    energia_disp = st.radio("Disponibilidade de energia junto ao ponto?", ["Sim", "Não", "Parcial"])
+    
+    energia_disp = st.radio("Disponibilidade de energia junto ao ponto?", ["Sim", "Não", "Parcial", "Outro"])
+    if energia_disp == "Outro":
+        energia_disp = st.text_input("Descreva a disponibilidade de energia:")
+        
     distancia_qgbt = st.number_input("Distância ao QGBT (metros)", min_value=0.0)
-    tensao = st.selectbox("Tensão disponível", ["110V", "220V", "380V", "440V", "Outra", "N/A"])
-    necessidade_energia = st.multiselect("Necessidades identificadas", ["Alimentação dedicada", "No-break", "Painel Solar", "Adequação de Aterramento/DPS"])
+    
+    tensao = st.selectbox("Tensão disponível", ["110V", "220V", "380V", "440V", "N/A", "Outra"])
+    if tensao == "Outra":
+        tensao = st.text_input("Qual a tensão?")
+        
+    necessidade_energia = st.multiselect("Necessidades identificadas", ["Alimentação dedicada", "No-break", "Painel Solar", "Adequação de Aterramento/DPS", "Outra"])
+    if "Outra" in necessidade_energia:
+        nec_outra = st.text_input("Qual outra necessidade elétrica?")
     
     st.subheader("📸 Fotos do Painel Elétrico")
     foto_eletrica = st.file_uploader("Anexe fotos do QGBT e disjuntores", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'], key="foto_ele")
@@ -98,7 +110,11 @@ with tab4:
 with tab5:
     st.header("5. Automação e Telemetria")
     clp_existente = st.text_input("Existência de CLP/RTU/SCADA (Marca/Modelo)")
-    telemetria = st.selectbox("Telemetria existente", ["Nenhuma", "Celular (3G/4G)", "Rádio", "Fibra Óptica"])
+    
+    telemetria = st.selectbox("Telemetria existente", ["Nenhuma", "Celular (3G/4G)", "Rádio", "Fibra Óptica", "Outra"])
+    if telemetria == "Outra":
+        telemetria = st.text_input("Descreva a telemetria existente:")
+        
     sinal = st.slider("Qualidade do Sinal (0=Sem sinal, 10=Excelente)", 0, 10, 5)
     pontos_io = st.text_input("Pontos de I/O disponíveis para integração")
     
@@ -107,7 +123,11 @@ with tab5:
 
 with tab6:
     st.header("6. Acessibilidade e Segurança")
-    acesso = st.multiselect("Condições de acesso", ["Espaço Confinado", "Trabalho em Altura", "Uso de Escadas", "Acesso Livre"])
+    
+    acesso = st.multiselect("Condições de acesso", ["Espaço Confinado", "Trabalho em Altura", "Uso de Escadas", "Acesso Livre", "Outra"])
+    if "Outra" in acesso:
+        acesso_outro = st.text_input("Qual outra condição de acesso?")
+        
     riscos = st.text_area("Riscos presentes e EPIs necessários:")
     vulnerabilidade = st.checkbox("Exposição a alagamento, intempéries ou vandalismo?")
     
@@ -128,5 +148,5 @@ with tab7:
             st.error("Por favor, selecione a EEE na Aba 1 antes de salvar.")
         else:
             st.success(f"✅ Vistoria da unidade {eee_selecionada} processada com sucesso! (Modo de Teste)")
-            st.info("A criação da planilha mestre, pasta de fotos e planilha individual será implementada no próximo passo.")
+            st.info("A criação da planilha mestre, pasta de fotos e planilha individual será implementada na conexão com o Google.")
             st.balloons()
