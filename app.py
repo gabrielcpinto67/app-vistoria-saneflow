@@ -1,15 +1,10 @@
 import streamlit as st
 from datetime import date, datetime
 import json
-import io
-
-# Bibliotecas do Google Sheets
+import base64
+import requests
 import gspread
 from google.oauth2.service_account import Credentials
-
-# Bibliotecas do Google Drive
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 
 st.set_page_config(page_title="Vistoria EEE - Saneflow", page_icon="💧", layout="centered")
 
@@ -131,70 +126,53 @@ with tab7:
     
     st.markdown("---")
     
-    # --- SISTEMA DE ENVIO (PLANILHA E DRIVE) ---
     if st.button("💾 ENVIAR DADOS DA VISTORIA", use_container_width=True):
         if eee_selecionada == "Selecione...":
             st.error("Por favor, selecione a EEE na Aba 1 antes de salvar.")
         else:
-            with st.spinner('Criando pastas e enviando dados para a Saneflow. Isso pode levar alguns segundos...'):
+            with st.spinner('Criando pastas, convertendo imagens e enviando dados...'):
                 try:
-                    # 1. Configurando Credenciais Unificadas (Serve para o Drive e para a Planilha)
-                    credenciais_json = json.loads(st.secrets["google_json"])
-                    escopos = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-                    credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
-                    
-                    # Conectando aos serviços
-                    conta_robo_planilha = gspread.authorize(credenciais)
-                    drive_service = build('drive', 'v3', credentials=credenciais)
-                    
-                    # ID da sua pasta principal "App_Vistoria_Extravasor"
+                    # COLOQUE AQUI O LINK DO SEU GOOGLE APPS SCRIPT
+                    URL_APPS_SCRIPT = st.secrets["url_script"]"
                     id_pasta_mae = "1lVPOzLMM4lq_qL89CqjKMsUNtHMgp3uq"
-                    
-                    # 2. Lógica Inteligente de Nome de Pastas (nome.1, nome.2)
-                    nome_base_pasta = f"{eee_selecionada} - {data_vistoria.strftime('%d-%m-%Y')}"
-                    nome_pasta_final = nome_base_pasta
-                    contador = 1
-                    
-                    while True:
-                        # O robô pesquisa se já existe uma pasta com esse nome lá dentro
-                        query = f"'{id_pasta_mae}' in parents and name='{nome_pasta_final}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                        resultados = drive_service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-                        
-                        if not resultados.get('files', []):
-                            break # O nome está livre, podemos sair do loop!
-                        
-                        # Se já existe, ele adiciona o .1, .2, etc., e tenta de novo
-                        nome_pasta_final = f"{nome_base_pasta}.{contador}"
-                        contador += 1
-                        
-                    # Cria a pasta definitiva
-                    metadados_pasta = {
-                        'name': nome_pasta_final,
-                        'mimeType': 'application/vnd.google-apps.folder',
-                        'parents': [id_pasta_mae]
-                    }
-                    pasta_criada = drive_service.files().create(body=metadados_pasta, fields='id, webViewLink').execute()
-                    id_nova_pasta = pasta_criada.get('id')
-                    link_pasta_drive = pasta_criada.get('webViewLink')
 
-                    # 3. Função para subir as fotos e pegar os links
+                    # 1. Pede para o Google Script criar a pasta (com lógica inteligente)
+                    nome_base = f"{eee_selecionada} - {data_vistoria.strftime('%d-%m-%Y')}"
+                    payload_pasta = {
+                        "action": "create_folder",
+                        "parentFolderId": id_pasta_mae,
+                        "baseName": nome_base
+                    }
+                    resp_pasta = requests.post(URL_APPS_SCRIPT, json=payload_pasta).json()
+                    
+                    id_nova_pasta = resp_pasta["folderId"]
+                    link_pasta = resp_pasta["folderLink"]
+                    nome_pasta = resp_pasta["folderName"]
+
+                    # 2. Função para subir as fotos via Google Script
                     def subir_fotos(lista_arquivos, prefixo):
-                        if not lista_arquivos:
-                            return "Nenhuma foto anexada"
+                        if not lista_arquivos: return "Nenhuma foto anexada"
                         links = []
                         for i, arquivo in enumerate(lista_arquivos):
                             nome_arquivo = f"{prefixo}_{i+1}_{arquivo.name}"
-                            metadados_arquivo = {'name': nome_arquivo, 'parents': [id_nova_pasta]}
-                            # Converte o arquivo do Streamlit para um formato que o Google entende
-                            media = MediaIoBaseUpload(io.BytesIO(arquivo.getvalue()), mimetype=arquivo.type, resumable=True)
+                            encoded_string = base64.b64encode(arquivo.getvalue()).decode("utf-8")
                             
-                            arquivo_subido = drive_service.files().create(body=metadados_arquivo, media_body=media, fields='webViewLink').execute()
-                            links.append(arquivo_subido.get('webViewLink'))
+                            payload_foto = {
+                                "action": "upload_file",
+                                "folderId": id_nova_pasta,
+                                "filename": nome_arquivo,
+                                "fileData": encoded_string,
+                                "mimeType": arquivo.type
+                            }
+                            resp_foto = requests.post(URL_APPS_SCRIPT, json=payload_foto).json()
+                            if resp_foto.get("status") == "success":
+                                links.append(resp_foto["link"])
+                            else:
+                                links.append(f"Erro ao subir {nome_arquivo}")
                         
-                        # Junta os links separando por uma quebra de linha (Enter) para caber na célula da planilha
                         return "\n".join(links)
 
-                    # Subindo todas as categorias de fotos
+                    # Subindo todas as categorias
                     link_f_gerais = subir_fotos(foto_cadastro, "1_Gerais")
                     link_f_ext = subir_fotos(foto_extravasor, "2_Extravasor")
                     link_f_ope = subir_fotos(foto_operacional, "3_Operacional")
@@ -203,65 +181,29 @@ with tab7:
                     link_f_seg = subir_fotos(foto_seguranca, "6_Seguranca")
                     link_f_doc = subir_fotos(foto_doc, "7_Documentos")
 
-                    # 4. Salvando tudo na Planilha Google
+                    # 3. Conecta ao Sheets e salva (Essa parte não mudou!)
+                    credenciais_json = json.loads(st.secrets["google_json"])
+                    escopos = ['https://www.googleapis.com/auth/spreadsheets']
+                    credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
+                    
+                    conta_robo_planilha = gspread.authorize(credenciais)
                     planilha = conta_robo_planilha.open("Base_Dados_Vistorias_App")
                     aba_master = planilha.worksheet("Base_Master")
                     
-                    dados_para_salvar = [
-                        datetime.now().strftime("%d/%m/%Y %H:%M:%S"), # 1. Data/Hora
-                        eee_selecionada,                              # 2. EEE
-                        data_vistoria.strftime("%d/%m/%Y"),           # 3. Data Vistoria
-                        responsavel,                                  # 4. Responsável
-                        coordenadas,                                  # 5. GPS
-                        sub_bacia,                                    # 6. Sub-bacia
-                        link_f_gerais,                                # 7. Link Fotos Gerais
-                        
-                        tipo_extravasor,                              # 8. Estrutura
-                        diametro_largura,                             # 9. Diâmetro
-                        comprimento,                                  # 10. Comp.
-                        altura_soleira,                               # 11. Altura Sol.
-                        cota_soleira,                                 # 12. Cota Sol.
-                        estado_conservacao,                           # 13. Conservação
-                        regime_escoamento,                            # 14. Regime
-                        obs_extravasor,                               # 15. Obs.
-                        link_f_ext,                                   # 16. Link Fotos Ext.
-                        
-                        vazao_min,                                    # 17. Vazão Min
-                        vazao_med,                                    # 18. Vazão Med
-                        vazao_max,                                    # 19. Vazão Max
-                        hist_extravasamento,                          # 20. Histórico
-                        bombas,                                       # 21. Bombas
-                        niveis_poco,                                  # 22. Níveis
-                        link_f_ope,                                   # 23. Link Fotos Ope.
-                        
-                        energia_disp,                                 # 24. Energia Disp.
-                        distancia_qgbt,                               # 25. Distância
-                        tensao,                                       # 26. Tensão
-                        ", ".join(necessidade_energia),               # 27. Nec. Elétricas
-                        link_f_ele,                                   # 28. Link Fotos Ele.
-                        
-                        clp_existente,                                # 29. CLP
-                        telemetria,                                   # 30. Telemetria
-                        sinal,                                        # 31. Sinal
-                        pontos_io,                                    # 32. I/O
-                        link_f_aut,                                   # 33. Link Fotos Aut.
-                        
-                        ", ".join(acesso),                            # 34. Acesso
-                        riscos,                                       # 35. Riscos
-                        "Sim" if vulnerabilidade else "Não",          # 36. Vulnerabilidades
-                        link_f_seg,                                   # 37. Link Fotos Seg.
-                        
-                        "Sim" if as_built else "Não",                 # 38. As-built
-                        pendencias,                                   # 39. Pendências
-                        link_f_doc,                                   # 40. Link Doc.
-                        "Gerar na próxima fase",                      # 41. Planilha Indiv.
-                        link_pasta_drive                              # 42. Pasta Drive Master
+                    dados = [
+                        datetime.now().strftime("%d/%m/%Y %H:%M:%S"), eee_selecionada, data_vistoria.strftime("%d/%m/%Y"), 
+                        responsavel, coordenadas, sub_bacia, link_f_gerais, tipo_extravasor, diametro_largura, comprimento, 
+                        altura_soleira, cota_soleira, estado_conservacao, regime_escoamento, obs_extravasor, link_f_ext, 
+                        vazao_min, vazao_med, vazao_max, hist_extravasamento, bombas, niveis_poco, link_f_ope, 
+                        energia_disp, distancia_qgbt, tensao, ", ".join(necessidade_energia), link_f_ele, 
+                        clp_existente, telemetria, sinal, pontos_io, link_f_aut, ", ".join(acesso), riscos, 
+                        "Sim" if vulnerabilidade else "Não", link_f_seg, "Sim" if as_built else "Não", 
+                        pendencias, link_f_doc, "Gerar na próxima fase", link_pasta
                     ]
                     
-                    aba_master.append_row(dados_para_salvar)
-                    
-                    st.success(f"✅ Vistoria da unidade {eee_selecionada} salva! A pasta '{nome_pasta_final}' foi criada e todas as imagens foram enviadas.")
+                    aba_master.append_row(dados)
+                    st.success(f"✅ Vistoria da unidade {eee_selecionada} salva! A pasta '{nome_pasta}' foi criada com sucesso.")
                     st.balloons()
                     
                 except Exception as e:
-                    st.error(f"Erro ao conectar com o sistema: {e}")
+                    st.error(f"Erro interno do sistema: {e}")
