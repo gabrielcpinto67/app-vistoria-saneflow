@@ -1,7 +1,15 @@
 import streamlit as st
 from datetime import date, datetime
-import gspread
 import json
+import io
+
+# Bibliotecas do Google Sheets
+import gspread
+from google.oauth2.service_account import Credentials
+
+# Bibliotecas do Google Drive
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 st.set_page_config(page_title="Vistoria EEE - Saneflow", page_icon="💧", layout="centered")
 
@@ -123,22 +131,82 @@ with tab7:
     
     st.markdown("---")
     
-    # --- CONEXÃO SEGURA COM O GOOGLE ---
+    # --- SISTEMA DE ENVIO (PLANILHA E DRIVE) ---
     if st.button("💾 ENVIAR DADOS DA VISTORIA", use_container_width=True):
         if eee_selecionada == "Selecione...":
             st.error("Por favor, selecione a EEE na Aba 1 antes de salvar.")
         else:
-            with st.spinner('Conectando ao banco de dados da Saneflow...'):
+            with st.spinner('Criando pastas e enviando dados para a Saneflow. Isso pode levar alguns segundos...'):
                 try:
-                    # 1. Pega os dados do cofre do Streamlit
+                    # 1. Configurando Credenciais Unificadas (Serve para o Drive e para a Planilha)
                     credenciais_json = json.loads(st.secrets["google_json"])
-                    conta_robo = gspread.service_account_from_dict(credenciais_json)
+                    escopos = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+                    credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
                     
-                    # 2. Abre a planilha no Drive
-                    planilha = conta_robo.open("Base_Dados_Vistorias_App")
+                    # Conectando aos serviços
+                    conta_robo_planilha = gspread.authorize(credenciais)
+                    drive_service = build('drive', 'v3', credentials=credenciais)
+                    
+                    # ID da sua pasta principal "App_Vistoria_Extravasor"
+                    id_pasta_mae = "1lVPOzLMM4lq_qL89CqjKMsUNtHMgp3uq"
+                    
+                    # 2. Lógica Inteligente de Nome de Pastas (nome.1, nome.2)
+                    nome_base_pasta = f"{eee_selecionada} - {data_vistoria.strftime('%d-%m-%Y')}"
+                    nome_pasta_final = nome_base_pasta
+                    contador = 1
+                    
+                    while True:
+                        # O robô pesquisa se já existe uma pasta com esse nome lá dentro
+                        query = f"'{id_pasta_mae}' in parents and name='{nome_pasta_final}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                        resultados = drive_service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                        
+                        if not resultados.get('files', []):
+                            break # O nome está livre, podemos sair do loop!
+                        
+                        # Se já existe, ele adiciona o .1, .2, etc., e tenta de novo
+                        nome_pasta_final = f"{nome_base_pasta}.{contador}"
+                        contador += 1
+                        
+                    # Cria a pasta definitiva
+                    metadados_pasta = {
+                        'name': nome_pasta_final,
+                        'mimeType': 'application/vnd.google-apps.folder',
+                        'parents': [id_pasta_mae]
+                    }
+                    pasta_criada = drive_service.files().create(body=metadados_pasta, fields='id, webViewLink').execute()
+                    id_nova_pasta = pasta_criada.get('id')
+                    link_pasta_drive = pasta_criada.get('webViewLink')
+
+                    # 3. Função para subir as fotos e pegar os links
+                    def subir_fotos(lista_arquivos, prefixo):
+                        if not lista_arquivos:
+                            return "Nenhuma foto anexada"
+                        links = []
+                        for i, arquivo in enumerate(lista_arquivos):
+                            nome_arquivo = f"{prefixo}_{i+1}_{arquivo.name}"
+                            metadados_arquivo = {'name': nome_arquivo, 'parents': [id_nova_pasta]}
+                            # Converte o arquivo do Streamlit para um formato que o Google entende
+                            media = MediaIoBaseUpload(io.BytesIO(arquivo.getvalue()), mimetype=arquivo.type, resumable=True)
+                            
+                            arquivo_subido = drive_service.files().create(body=metadados_arquivo, media_body=media, fields='webViewLink').execute()
+                            links.append(arquivo_subido.get('webViewLink'))
+                        
+                        # Junta os links separando por uma quebra de linha (Enter) para caber na célula da planilha
+                        return "\n".join(links)
+
+                    # Subindo todas as categorias de fotos
+                    link_f_gerais = subir_fotos(foto_cadastro, "1_Gerais")
+                    link_f_ext = subir_fotos(foto_extravasor, "2_Extravasor")
+                    link_f_ope = subir_fotos(foto_operacional, "3_Operacional")
+                    link_f_ele = subir_fotos(foto_eletrica, "4_Eletrica")
+                    link_f_aut = subir_fotos(foto_automacao, "5_Automacao")
+                    link_f_seg = subir_fotos(foto_seguranca, "6_Seguranca")
+                    link_f_doc = subir_fotos(foto_doc, "7_Documentos")
+
+                    # 4. Salvando tudo na Planilha Google
+                    planilha = conta_robo_planilha.open("Base_Dados_Vistorias_App")
                     aba_master = planilha.worksheet("Base_Master")
                     
-                    # 3. Organiza os dados
                     dados_para_salvar = [
                         datetime.now().strftime("%d/%m/%Y %H:%M:%S"), # 1. Data/Hora
                         eee_selecionada,                              # 2. EEE
@@ -146,7 +214,7 @@ with tab7:
                         responsavel,                                  # 4. Responsável
                         coordenadas,                                  # 5. GPS
                         sub_bacia,                                    # 6. Sub-bacia
-                        "Pendente (Automação de Fotos)",              # 7. Link Fotos Gerais
+                        link_f_gerais,                                # 7. Link Fotos Gerais
                         
                         tipo_extravasor,                              # 8. Estrutura
                         diametro_largura,                             # 9. Diâmetro
@@ -156,7 +224,7 @@ with tab7:
                         estado_conservacao,                           # 13. Conservação
                         regime_escoamento,                            # 14. Regime
                         obs_extravasor,                               # 15. Obs.
-                        "Pendente (Automação de Fotos)",              # 16. Link Fotos Ext.
+                        link_f_ext,                                   # 16. Link Fotos Ext.
                         
                         vazao_min,                                    # 17. Vazão Min
                         vazao_med,                                    # 18. Vazão Med
@@ -164,37 +232,36 @@ with tab7:
                         hist_extravasamento,                          # 20. Histórico
                         bombas,                                       # 21. Bombas
                         niveis_poco,                                  # 22. Níveis
-                        "Pendente (Automação de Fotos)",              # 23. Link Fotos Ope.
+                        link_f_ope,                                   # 23. Link Fotos Ope.
                         
                         energia_disp,                                 # 24. Energia Disp.
                         distancia_qgbt,                               # 25. Distância
                         tensao,                                       # 26. Tensão
                         ", ".join(necessidade_energia),               # 27. Nec. Elétricas
-                        "Pendente (Automação de Fotos)",              # 28. Link Fotos Ele.
+                        link_f_ele,                                   # 28. Link Fotos Ele.
                         
                         clp_existente,                                # 29. CLP
                         telemetria,                                   # 30. Telemetria
                         sinal,                                        # 31. Sinal
                         pontos_io,                                    # 32. I/O
-                        "Pendente (Automação de Fotos)",              # 33. Link Fotos Aut.
+                        link_f_aut,                                   # 33. Link Fotos Aut.
                         
                         ", ".join(acesso),                            # 34. Acesso
                         riscos,                                       # 35. Riscos
                         "Sim" if vulnerabilidade else "Não",          # 36. Vulnerabilidades
-                        "Pendente (Automação de Fotos)",              # 37. Link Fotos Seg.
+                        link_f_seg,                                   # 37. Link Fotos Seg.
                         
                         "Sim" if as_built else "Não",                 # 38. As-built
                         pendencias,                                   # 39. Pendências
-                        "Pendente (Automação de Fotos)",              # 40. Link Doc.
+                        link_f_doc,                                   # 40. Link Doc.
                         "Gerar na próxima fase",                      # 41. Planilha Indiv.
-                        "Gerar na próxima fase"                       # 42. Pasta Drive
+                        link_pasta_drive                              # 42. Pasta Drive Master
                     ]
                     
-                    # 4. Envia para o Google Sheets
                     aba_master.append_row(dados_para_salvar)
                     
-                    st.success(f"✅ Vistoria da unidade {eee_selecionada} salva na nuvem com sucesso!")
+                    st.success(f"✅ Vistoria da unidade {eee_selecionada} salva! A pasta '{nome_pasta_final}' foi criada e todas as imagens foram enviadas.")
                     st.balloons()
                     
                 except Exception as e:
-                    st.error(f"Erro ao conectar com o Google: {e}")
+                    st.error(f"Erro ao conectar com o sistema: {e}")
