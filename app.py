@@ -133,7 +133,7 @@ with tab7:
             with st.spinner('Criando pastas, convertendo imagens e enviando dados...'):
                 try:
                     # COLOQUE AQUI O LINK DO SEU GOOGLE APPS SCRIPT
-                    URL_APPS_SCRIPT = st.secrets["url_script"]"
+                    URL_APPS_SCRIPT = st.secrets["url_script"]
                     id_pasta_mae = "1lVPOzLMM4lq_qL89CqjKMsUNtHMgp3uq"
 
                     # 1. Pede para o Google Script criar a pasta (com lógica inteligente)
