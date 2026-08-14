@@ -183,7 +183,7 @@ with tab7:
 
                     # 3. Conecta ao Sheets e salva (Essa parte não mudou!)
                     credenciais_json = json.loads(st.secrets["google_json"])
-                    escopos = ['https://www.googleapis.com/auth/spreadsheets']
+                    escopos = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
                     credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
                     
                     conta_robo_planilha = gspread.authorize(credenciais)
