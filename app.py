@@ -48,16 +48,39 @@ with tab1:
     
 with tab2:
     st.header("2. Extravasor (Hidráulica e Civil)")
+    
+    # --- NOVIDADE AQUI: DESTINO DO ESGOTO ---
+    destino_esgoto = st.text_input("Para onde o esgoto é escoado?", help="Ex: Rio, Galeria pluvial, Terreno baldio, etc.")
+    
     tipo_extravasor = st.selectbox("Tipo de estrutura", ["Selecione...", "Vertedor", "Tubo", "Canal", "Caixa", "Outro", "N/A"])
     if tipo_extravasor == "Outro": tipo_extravasor = st.text_input("Qual o tipo de estrutura?")
 
     col1, col2 = st.columns(2)
     with col1:
         diametro_largura = st.number_input("Diâmetro/Largura (m)", min_value=0.0, format="%.2f")
-        comprimento = st.number_input("Comprimento (m)", min_value=0.0, format="%.2f")
+        # Ajustei o min_value para 0.01 para não dar erro de divisão por zero no cálculo
+        comprimento = st.number_input("Comprimento (m)", min_value=0.01, format="%.2f") 
+        # --- NOVIDADE AQUI: COTA DE ENTRADA ---
+        cota_entrada = st.number_input("Cota de Entrada (m)", value=0.00, format="%.2f") 
     with col2:
         altura_soleira = st.number_input("Altura de Soleira (m)", min_value=0.0, format="%.2f")
         cota_soleira = st.number_input("Cota da soleira", min_value=0.0, format="%.2f")
+        # --- NOVIDADE AQUI: COTA DE SAÍDA ---
+        cota_saida = st.number_input("Cota de Saída (m)", value=0.00, format="%.2f")
+
+    # --- NOVIDADE AQUI: CÁLCULO DE INCLINAÇÃO ---
+    st.markdown("---")
+    st.subheader("📐 Cálculo de Inclinação (Automático)")
+    desnivel = cota_entrada - cota_saida
+    inclinacao_percentual = (desnivel / comprimento) * 100
+
+    if desnivel > 0:
+        st.success(f"Desnível: **{desnivel:.2f} m** | Inclinação: **{inclinacao_percentual:.2f}%**")
+    elif desnivel < 0:
+        st.error(f"⚠️ Atenção: A cota de saída está MAIOR que a de entrada (Contra-declive). Desnível: {desnivel:.2f} m")
+    else:
+        st.info("Nenhum desnível detectado (Nivelado).")
+    st.markdown("---")
         
     estado_conservacao = st.selectbox("Estado de conservação", ["Bom", "Regular", "Ruim", "Outro"])
     if estado_conservacao == "Outro": estado_conservacao = st.text_input("Descreva o estado:")
@@ -132,7 +155,6 @@ with tab7:
         else:
             with st.spinner('Criando pastas, convertendo imagens e enviando dados...'):
                 try:
-                    # COLOQUE AQUI O LINK DO SEU GOOGLE APPS SCRIPT
                     URL_APPS_SCRIPT = st.secrets["url_script"]
                     id_pasta_mae = "1lVPOzLMM4lq_qL89CqjKMsUNtHMgp3uq"
 
@@ -181,7 +203,7 @@ with tab7:
                     link_f_seg = subir_fotos(foto_seguranca, "6_Seguranca")
                     link_f_doc = subir_fotos(foto_doc, "7_Documentos")
 
-                    # 3. Conecta ao Sheets e salva (Essa parte não mudou!)
+                    # 3. Conecta ao Sheets e salva
                     credenciais_json = json.loads(st.secrets["google_json"])
                     escopos = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
                     credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
@@ -190,9 +212,13 @@ with tab7:
                     planilha = conta_robo_planilha.open("Base_Dados_Vistorias_App")
                     aba_master = planilha.worksheet("Base_Master")
                     
+                    # --- ATENÇÃO AQUI: ADICIONEI AS 4 NOVAS VARIÁVEIS NESTA LISTA ---
                     dados = [
                         datetime.now().strftime("%d/%m/%Y %H:%M:%S"), eee_selecionada, data_vistoria.strftime("%d/%m/%Y"), 
-                        responsavel, coordenadas, sub_bacia, link_f_gerais, tipo_extravasor, diametro_largura, comprimento, 
+                        responsavel, coordenadas, sub_bacia, link_f_gerais, 
+                        destino_esgoto, # <--- ADICIONADO AQUI
+                        tipo_extravasor, diametro_largura, comprimento, 
+                        cota_entrada, cota_saida, inclinacao_percentual, # <--- ADICIONADOS AQUI
                         altura_soleira, cota_soleira, estado_conservacao, regime_escoamento, obs_extravasor, link_f_ext, 
                         vazao_min, vazao_med, vazao_max, hist_extravasamento, bombas, niveis_poco, link_f_ope, 
                         energia_disp, distancia_qgbt, tensao, ", ".join(necessidade_energia), link_f_ele, 
