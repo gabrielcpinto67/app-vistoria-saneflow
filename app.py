@@ -9,6 +9,12 @@ from streamlit_geolocation import streamlit_geolocation
 
 st.set_page_config(page_title="Vistoria EEE - Saneflow", page_icon="💧", layout="centered")
 
+# --- MENSAGEM DE SUCESSO PÓS-RESET ---
+# Se o app acabou de ser reiniciado após um envio, mostra a mensagem
+if 'sucesso_envio' in st.session_state:
+    st.success(st.session_state.sucesso_envio)
+    del st.session_state.sucesso_envio
+
 # --- TELA DE LOGIN ---
 senha_digitada = st.text_input("🔑 Digite a senha da equipe para acessar:", type="password")
 
@@ -63,6 +69,8 @@ with tab1:
     sub_bacia = st.text_input("Sub-bacia")
     st.subheader("📸 Fotos Gerais")
     foto_cadastro = st.file_uploader("Anexe fotos da fachada", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+    
+    st.info("⬆️ Etapa 1 concluída. Role para o topo e clique na aba **'2. Extravasor'**.")
 
 with tab2:
     st.header("2. Extravasor (Hidráulica e Civil)")
@@ -109,6 +117,8 @@ with tab2:
             with col_j: st.number_input("Comprimento (m)", value=1.0, min_value=0.01, format="%.2f", key=f"comp_{i}")
             
             st.file_uploader(f"📸 Fotos Obrigatórias (Ext. {i+1})", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'], key=f"f_ext_{i}")
+            
+    st.info("⬆️ Etapa 2 concluída. Role para o topo e clique na aba **'3. Operacional'**.")
 
 with tab3:
     st.header("3. Regime Operacional")
@@ -125,7 +135,7 @@ with tab3:
     
     st.markdown("---")
     st.markdown("**Operação Geral da EEE**")
-    scada_hist = st.radio("SCADA possui histórico de horas de operação/partidas?", ["Sim", "Não", "A Validar"])
+    scada_hist = st.radio("SCADA possui histórico de horas de operação/partidas?", ["Sim", "Não", "A validar"])
     
     col3, col4, col5 = st.columns(3)
     with col3: vazao_min = st.number_input("Vazão Mín. (L/s)", min_value=0.0)
@@ -135,13 +145,15 @@ with tab3:
     bombas = st.text_input("Nº e potência das bombas (ex: 2x 15cv)")
     niveis_poco = st.text_input("Níveis de partida/parada e volume do poço")
     foto_operacional = st.file_uploader("📸 Evidências Operacionais", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+    
+    st.info("⬆️ Etapa 3 concluída. Role para o topo e clique na aba **'4. Elétrica'**.")
 
 with tab4:
     st.header("4. Infraestrutura Elétrica")
     energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial", "Outra"])
     if energia_disp == "Outra": energia_disp = st.text_input("Especifique a energia:")
         
-    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Sim - Gerador e No-break", "Não possui", "Outro"])
+    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Sim - Gerador e No-Brek", "Não possui", "Outro"])
     if gerador == "Outro": gerador = st.text_input("Especifique gerador/no-break:")
         
     aterramento = st.selectbox("Aterramento adequado?", ["Sim", "Não", "Outro"])
@@ -161,6 +173,8 @@ with tab4:
         if nec_extra: necessidade_energia.append(nec_extra)
         
     foto_eletrica = st.file_uploader("📸 Fotos do Painel Elétrico", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+    
+    st.info("⬆️ Etapa 4 concluída. Role para o topo e clique na aba **'5. Automação'**.")
 
 with tab5:
     st.header("5. Automação e Telemetria")
@@ -179,6 +193,8 @@ with tab5:
     sinal = st.slider("Qualidade do Sinal 3G/4G (0 a 10)", 0, 10, 5)
     pontos_io = st.text_input("Pontos de I/O disponíveis")
     foto_automacao = st.file_uploader("📸 Fotos da Automação", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+    
+    st.info("⬆️ Etapa 5 concluída. Role para o topo e clique na aba **'6. Segurança'**.")
 
 with tab6:
     st.header("6. Acessibilidade e Segurança")
@@ -193,6 +209,8 @@ with tab6:
     
     riscos_outros = st.text_area("Outros Riscos presentes e EPIs:")
     foto_seguranca = st.file_uploader("📸 Fotos de Segurança", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+    
+    st.info("⬆️ Etapa 6 concluída. Role para o topo e clique na aba **'7. Fechar'**.")
 
 with tab7:
     st.header("7. Documentação e Fechamento")
@@ -205,7 +223,7 @@ with tab7:
     
     st.markdown("---")
     
-    if st.button("💾 ENVIAR DADOS DA VISTORIA", use_container_width=True):
+    if st.button("💾 ENVIAR DADOS DA VISTORIA", use_container_width=True, type="primary"):
         if eee_selecionada == "Selecione..." or not lat or energia_disp == "Selecione..." or gerador == "Selecione...":
             st.error("Preencha todos os campos obrigatórios (EEE, GPS, Energia e Gerador).")
         else:
@@ -246,59 +264,56 @@ with tab7:
                         valor = d.get(f'{campo}_{indice}')
                         return d.get(f'{campo}_outro_{indice}', valor) if valor == "Outro" else valor
 
-                    # --- EXTRAVASOR PRINCIPAL (1) SEPARADO EM COLUNAS ---
-                    ext1_loc = resolve_outro('loc', 0)
-                    ext1_reg = resolve_outro('regime', 0)
-                    ext1_mat = resolve_outro('mat', 0)
-                    ext1_dest = resolve_outro('dest', 0)
-                    ext1_sensivel = "Sim" if d.get('sensivel_0') else "Não"
-                    ext1_flap = d.get('flap_0', '')
-                    ext1_grade = d.get('grade_0', '')
-                    ext1_reto = d.get('reto_0', '')
-                    ext1_mare = d.get('mare_0', '')
-                    ext1_cota_mare = d.get('cota_mare_0', 0.0) if ext1_mare == "Sim" else "N/A"
-                    ext1_formato = resolve_outro('formato', 0)
-                    ext1_dim = d.get('dim_0', 0.0)
-                    ext1_cota_ent = d.get('cota_ent_0', 0.0)
-                    ext1_cota_sai = d.get('cota_sai_0', 0.0)
-                    ext1_comp = d.get('comp_0', 1.0)
-                    ext1_incl = ((ext1_cota_ent - ext1_cota_sai) / ext1_comp) * 100 if ext1_comp > 0 else 0
-                    ext1_causas = ", ".join(d.get('causa_0', []))
-                    ext1_freq = d.get('freq_0', 0)
-                    ext1_medidor_exist = d.get('medidor_exist_0', 'Não')
-                    ext1_medidor = d.get('qual_med_0', '') if ext1_medidor_exist == "Sim" else "Não"
-                    ext1_foto = subir_fotos(d.get('f_ext_0'), "2_Ext_1")
-
-                    # --- EXTRAVASORES ADICIONAIS (COMPILADO) ---
-                    dados_ext_add = ""
-                    links_fotos_ext_add = []
+                    # Lista que vai guardar todas as linhas a serem enviadas ao Excel
+                    lista_de_linhas = []
                     
-                    if qtd_extravasores > 1:
-                        for i in range(1, qtd_extravasores):
-                            loc_f = resolve_outro('loc', i)
-                            reg_f = resolve_outro('regime', i)
-                            mat_f = resolve_outro('mat', i)
-                            dest_f = resolve_outro('dest', i)
-                            form_f = resolve_outro('formato', i)
-                            incl_i = ((d[f'cota_ent_{i}'] - d[f'cota_sai_{i}']) / d[f'comp_{i}']) * 100
-                            
-                            bloco = f"""--- PONTO {i+1} ---
-Local: {loc_f} | Regime: {reg_f}
-Destino: {dest_f} | Amb. Sensível: {d.get(f'sensivel_{i}')}
-Material: {mat_f} | Formato: {form_f} | Dim: {d[f'dim_{i}']}m
-Flap: {d[f'flap_{i}']} | Grade: {d[f'grade_{i}']} | Trecho Reto: {d[f'reto_{i}']}
-Inclinação: {incl_i:.2f}% (Ent: {d[f'cota_ent_{i}']}, Sai: {d[f'cota_sai_{i}']}, Comp: {d[f'comp_{i}']})
-Maré: {d[f'mare_{i}']}
-Causas: {', '.join(d.get(f'causa_{i}', []))} | Freq: {d[f'freq_{i}']} ev/mês | Medidor: {d[f'medidor_exist_{i}']}"""
-                            dados_ext_add += bloco + "\n\n"
-                            
-                            fotos_deste = d.get(f'f_ext_{i}')
-                            links_fotos_ext_add.append(f"EXT {i+1}: " + subir_fotos(fotos_deste, f"2_Ext_{i+1}"))
+                    # --- LOOP PARA GERAR UMA LINHA DE EXCEL POR EXTRAVASOR ---
+                    for i in range(qtd_extravasores):
+                        ext_loc = resolve_outro('loc', i)
+                        ext_reg = resolve_outro('regime', i)
+                        ext_mat = resolve_outro('mat', i)
+                        ext_dest = resolve_outro('dest', i)
+                        ext_sensivel = "Sim" if d.get(f'sensivel_{i}') else "Não"
+                        ext_flap = d.get(f'flap_{i}', '')
+                        ext_grade = d.get(f'grade_{i}', '')
+                        ext_reto = d.get(f'reto_{i}', '')
+                        ext_mare = d.get(f'mare_{i}', '')
+                        ext_cota_mare = d.get(f'cota_mare_{i}', 0.0) if ext_mare == "Sim" else "N/A"
+                        ext_formato = resolve_outro('formato', i)
+                        ext_dim = d.get(f'dim_{i}', 0.0)
+                        ext_cota_ent = d.get(f'cota_ent_{i}', 0.0)
+                        ext_cota_sai = d.get(f'cota_sai_{i}', 0.0)
+                        ext_comp = d.get(f'comp_{i}', 1.0)
+                        ext_incl = ((ext_cota_ent - ext_cota_sai) / ext_comp) * 100 if ext_comp > 0 else 0
+                        ext_causas = ", ".join(d.get(f'causa_{i}', []))
+                        ext_freq = d.get(f'freq_{i}', 0)
+                        ext_medidor_exist = d.get(f'medidor_exist_{i}', 'Não')
+                        ext_medidor = d.get(f'qual_med_{i}', '') if ext_medidor_exist == "Sim" else "Não"
+                        
+                        ext_foto = subir_fotos(d.get(f'f_ext_{i}'), f"2_Ext_{i+1}")
 
-                    link_f_add_todas = "\n".join(links_fotos_ext_add) if links_fotos_ext_add else "N/A"
-                    dados_ext_add = dados_ext_add if dados_ext_add else "Nenhum extravasor adicional."
+                        linha = [
+                            datetime.now().strftime("%d/%m/%Y %H:%M:%S"), eee_selecionada, data_vistoria.strftime("%d/%m/%Y"), 
+                            responsavel, operador_igua, coordenadas, sub_bacia, l_cad, 
+                            qtd_extravasores, 
+                            
+                            # Colunas Específicas do Extravasor atual
+                            ext_loc, ext_reg, ext_mat, ext_dest, ext_sensivel, ext_flap, ext_grade, ext_reto, 
+                            ext_mare, ext_cota_mare, ext_formato, ext_dim, ext_cota_ent, ext_cota_sai, ext_comp, ext_incl, 
+                            ext_causas, ext_freq, ext_medidor, ext_foto,
+                            
+                            # Colunas do Antigo Compilado (Agora vazias para manter o alinhamento da planilha)
+                            f"Extravasor {i+1} desmembrado", "N/A",
+                            
+                            scada_hist, vazao_min, vazao_med, vazao_max, bombas, niveis_poco, l_ope, 
+                            energia_disp, gerador, aterramento, quedas, solar, distancia_qgbt, tensao, ", ".join(necessidade_energia), l_ele, 
+                            clp_existente, ligado_cco, telemetria, protocolo, sinal_tipo, sinal, pontos_io, l_aut, 
+                            espaco_confinado, gas_h2s, comunidade, "Sim" if risco_alagamento else "Não", "Sim" if risco_intemperie else "Não", "Sim" if risco_vandalismo else "Não", riscos_outros, l_seg, 
+                            sugestao_tec, "Sim" if as_built else "Não", pendencias, l_doc, link_pasta
+                        ]
+                        lista_de_linhas.append(linha)
 
-                    # 3. Conecta ao Sheets e salva
+                    # 3. Conecta ao Sheets e salva TODAS as linhas de uma vez
                     credenciais_json = json.loads(st.secrets["google_json"])
                     escopos = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
                     credenciais = Credentials.from_service_account_info(credenciais_json, scopes=escopos)
@@ -307,29 +322,13 @@ Causas: {', '.join(d.get(f'causa_{i}', []))} | Freq: {d[f'freq_{i}']} ev/mês | 
                     planilha = conta_robo_planilha.open("Base_Dados_Vistorias_App")
                     aba_master = planilha.worksheet("Base_Master")
                     
-                    dados = [
-                        datetime.now().strftime("%d/%m/%Y %H:%M:%S"), eee_selecionada, data_vistoria.strftime("%d/%m/%Y"), 
-                        responsavel, operador_igua, coordenadas, sub_bacia, l_cad, 
-                        qtd_extravasores, 
-                        
-                        # As 20 Colunas Dedicadas ao Extravasor 1
-                        ext1_loc, ext1_reg, ext1_mat, ext1_dest, ext1_sensivel, ext1_flap, ext1_grade, ext1_reto, 
-                        ext1_mare, ext1_cota_mare, ext1_formato, ext1_dim, ext1_cota_ent, ext1_cota_sai, ext1_comp, ext1_incl, 
-                        ext1_causas, ext1_freq, ext1_medidor, ext1_foto,
-                        
-                        # Colunas dos Extravasores Adicionais
-                        dados_ext_add, link_f_add_todas,
-                        
-                        scada_hist, vazao_min, vazao_med, vazao_max, bombas, niveis_poco, l_ope, 
-                        energia_disp, gerador, aterramento, quedas, solar, distancia_qgbt, tensao, ", ".join(necessidade_energia), l_ele, 
-                        clp_existente, ligado_cco, telemetria, protocolo, sinal_tipo, sinal, pontos_io, l_aut, 
-                        espaco_confinado, gas_h2s, comunidade, "Sim" if risco_alagamento else "Não", "Sim" if risco_intemperie else "Não", "Sim" if risco_vandalismo else "Não", riscos_outros, l_seg, 
-                        sugestao_tec, "Sim" if as_built else "Não", pendencias, l_doc, link_pasta
-                    ]
+                    # O gspread permite salvar várias linhas simultaneamente usando append_rows
+                    aba_master.append_rows(lista_de_linhas)
                     
-                    aba_master.append_row(dados)
-                    st.success(f"✅ Vistoria salva! Pasta criada no Drive.")
-                    st.balloons()
+                    # 4. RESET E REDIRECIONAMENTO AUTOMÁTICO
+                    st.session_state.clear()
+                    st.session_state.sucesso_envio = f"✅ Vistoria da unidade {eee_selecionada} salva no Drive e Excel! Formulário zerado para a próxima estação."
+                    st.rerun()
                     
                 except Exception as e:
                     st.error(f"Erro interno do sistema: {e}")
