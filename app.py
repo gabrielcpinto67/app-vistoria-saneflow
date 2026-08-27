@@ -121,10 +121,16 @@ with tab2:
 with tab3:
     st.header("3. Regime Operacional")
     
-    st.markdown("**Histórico de Extravasamentos (Por ponto)**")
+st.markdown("**Histórico de Extravasamentos (Por ponto)**")
     for i in range(qtd_extravasores):
         st.markdown(f"*Extravasor {i+1}:*")
-        st.multiselect("Causas prováveis", ["Falta de energia", "Falha de bomba", "Chuva", "Maré", "Entupimento", "Outra"], key=f"causa_{i}")
+        
+        causas = st.multiselect("Causas prováveis", ["Falta de energia", "Falha de bomba", "Chuva", "Maré", "Entupimento", "Outra"], key=f"causa_{i}")
+        
+        # Abre o campo de texto condicionalmente se "Outra" estiver na lista
+        if "Outra" in causas:
+            st.text_input("Especifique a outra causa:", key=f"causa_outro_{i}")
+            
         col_k, col_l = st.columns(2)
         with col_k: st.number_input("Frequência (Eventos/mês)", min_value=0, value=0, key=f"freq_{i}")
         with col_l:
