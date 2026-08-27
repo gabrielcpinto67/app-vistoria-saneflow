@@ -70,7 +70,6 @@ with tab1:
     st.subheader("📸 Fotos Gerais")
     foto_cadastro = st.file_uploader("Anexe fotos da fachada", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     
-    st.info("⬆️ Etapa 1 concluída. Role para o topo e clique na aba **'2. Extravasor'**.")
 
 with tab2:
     st.header("2. Extravasor (Hidráulica e Civil)")
@@ -118,7 +117,6 @@ with tab2:
             
             st.file_uploader(f"📸 Fotos Obrigatórias (Ext. {i+1})", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'], key=f"f_ext_{i}")
             
-    st.info("⬆️ Etapa 2 concluída. Role para o topo e clique na aba **'3. Operacional'**.")
 
 with tab3:
     st.header("3. Regime Operacional")
@@ -146,8 +144,7 @@ with tab3:
     niveis_poco = st.text_input("Níveis de partida/parada e volume do poço")
     foto_operacional = st.file_uploader("📸 Evidências Operacionais", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     
-    st.info("⬆️ Etapa 3 concluída. Role para o topo e clique na aba **'4. Elétrica'**.")
-
+    
 with tab4:
     st.header("4. Infraestrutura Elétrica")
     energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial", "Outra"])
@@ -174,8 +171,7 @@ with tab4:
         
     foto_eletrica = st.file_uploader("📸 Fotos do Painel Elétrico", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     
-    st.info("⬆️ Etapa 4 concluída. Role para o topo e clique na aba **'5. Automação'**.")
-
+    
 with tab5:
     st.header("5. Automação e Telemetria")
     clp_existente = st.text_input("Existência de CLP/RTU/SCADA (Marca/Modelo)")
@@ -194,7 +190,7 @@ with tab5:
     pontos_io = st.text_input("Pontos de I/O disponíveis")
     foto_automacao = st.file_uploader("📸 Fotos da Automação", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     
-    st.info("⬆️ Etapa 5 concluída. Role para o topo e clique na aba **'6. Segurança'**.")
+    
 
 with tab6:
     st.header("6. Acessibilidade e Segurança")
@@ -210,7 +206,6 @@ with tab6:
     riscos_outros = st.text_area("Outros Riscos presentes e EPIs:")
     foto_seguranca = st.file_uploader("📸 Fotos de Segurança", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     
-    st.info("⬆️ Etapa 6 concluída. Role para o topo e clique na aba **'7. Fechar'**.")
 
 with tab7:
     st.header("7. Documentação e Fechamento")
