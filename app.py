@@ -241,40 +241,62 @@ with tab7:
                     l_seg = subir_fotos(foto_seguranca, "6_Seguranca")
                     l_doc = subir_fotos(foto_doc, "7_Doc")
 
-                    # Compilando dados dos múltiplos extravasores em Texto para o Sheets
-                    dados_extravasores_compilados = ""
-                    links_fotos_extravasores = []
-                    
                     d = st.session_state
-                    
                     def resolve_outro(campo, indice):
                         valor = d.get(f'{campo}_{indice}')
                         return d.get(f'{campo}_outro_{indice}', valor) if valor == "Outro" else valor
-                    
-                    for i in range(qtd_extravasores):
-                        loc_final = resolve_outro('loc', i)
-                        regime_final = resolve_outro('regime', i)
-                        mat_final = resolve_outro('mat', i)
-                        dest_final = resolve_outro('dest', i)
-                        formato_final = resolve_outro('formato', i)
-                        
-                        inclinacao = ((d[f'cota_ent_{i}'] - d[f'cota_sai_{i}']) / d[f'comp_{i}']) * 100
-                        
-                        bloco = f"""--- PONTO {i+1} ---
-Local: {loc_final} | Regime: {regime_final}
-Destino: {dest_final} | Amb. Sensível: {d[f'sensivel_{i}']}
-Material: {mat_final} | Formato: {formato_final} | Dim: {d[f'dim_{i}']}m
-Flap: {d[f'flap_{i}']} | Grade: {d[f'grade_{i}']} | Trecho Reto: {d[f'reto_{i}']}
-Inclinação: {inclinacao:.2f}% (Ent: {d[f'cota_ent_{i}']}, Sai: {d[f'cota_sai_{i}']}, Comp: {d[f'comp_{i}']})
-Maré: {d[f'mare_{i}']}
-Causas: {', '.join(d[f'causa_{i}'])} | Freq: {d[f'freq_{i}']} ev/mês | Medidor: {d[f'medidor_exist_{i}']}"""
-                        dados_extravasores_compilados += bloco + "\n\n"
-                        
-                        # Sobe as fotos do Extravasor atual
-                        fotos_deste_ext = d.get(f'f_ext_{i}')
-                        links_fotos_extravasores.append(f"EXT {i+1}: " + subir_fotos(fotos_deste_ext, f"2_Ext_{i+1}"))
 
-                    link_f_ext_todas = "\n".join(links_fotos_extravasores)
+                    # --- EXTRAVASOR PRINCIPAL (1) SEPARADO EM COLUNAS ---
+                    ext1_loc = resolve_outro('loc', 0)
+                    ext1_reg = resolve_outro('regime', 0)
+                    ext1_mat = resolve_outro('mat', 0)
+                    ext1_dest = resolve_outro('dest', 0)
+                    ext1_sensivel = "Sim" if d.get('sensivel_0') else "Não"
+                    ext1_flap = d.get('flap_0', '')
+                    ext1_grade = d.get('grade_0', '')
+                    ext1_reto = d.get('reto_0', '')
+                    ext1_mare = d.get('mare_0', '')
+                    ext1_cota_mare = d.get('cota_mare_0', 0.0) if ext1_mare == "Sim" else "N/A"
+                    ext1_formato = resolve_outro('formato', 0)
+                    ext1_dim = d.get('dim_0', 0.0)
+                    ext1_cota_ent = d.get('cota_ent_0', 0.0)
+                    ext1_cota_sai = d.get('cota_sai_0', 0.0)
+                    ext1_comp = d.get('comp_0', 1.0)
+                    ext1_incl = ((ext1_cota_ent - ext1_cota_sai) / ext1_comp) * 100 if ext1_comp > 0 else 0
+                    ext1_causas = ", ".join(d.get('causa_0', []))
+                    ext1_freq = d.get('freq_0', 0)
+                    ext1_medidor_exist = d.get('medidor_exist_0', 'Não')
+                    ext1_medidor = d.get('qual_med_0', '') if ext1_medidor_exist == "Sim" else "Não"
+                    ext1_foto = subir_fotos(d.get('f_ext_0'), "2_Ext_1")
+
+                    # --- EXTRAVASORES ADICIONAIS (COMPILADO) ---
+                    dados_ext_add = ""
+                    links_fotos_ext_add = []
+                    
+                    if qtd_extravasores > 1:
+                        for i in range(1, qtd_extravasores):
+                            loc_f = resolve_outro('loc', i)
+                            reg_f = resolve_outro('regime', i)
+                            mat_f = resolve_outro('mat', i)
+                            dest_f = resolve_outro('dest', i)
+                            form_f = resolve_outro('formato', i)
+                            incl_i = ((d[f'cota_ent_{i}'] - d[f'cota_sai_{i}']) / d[f'comp_{i}']) * 100
+                            
+                            bloco = f"""--- PONTO {i+1} ---
+Local: {loc_f} | Regime: {reg_f}
+Destino: {dest_f} | Amb. Sensível: {d.get(f'sensivel_{i}')}
+Material: {mat_f} | Formato: {form_f} | Dim: {d[f'dim_{i}']}m
+Flap: {d[f'flap_{i}']} | Grade: {d[f'grade_{i}']} | Trecho Reto: {d[f'reto_{i}']}
+Inclinação: {incl_i:.2f}% (Ent: {d[f'cota_ent_{i}']}, Sai: {d[f'cota_sai_{i}']}, Comp: {d[f'comp_{i}']})
+Maré: {d[f'mare_{i}']}
+Causas: {', '.join(d.get(f'causa_{i}', []))} | Freq: {d[f'freq_{i}']} ev/mês | Medidor: {d[f'medidor_exist_{i}']}"""
+                            dados_ext_add += bloco + "\n\n"
+                            
+                            fotos_deste = d.get(f'f_ext_{i}')
+                            links_fotos_ext_add.append(f"EXT {i+1}: " + subir_fotos(fotos_deste, f"2_Ext_{i+1}"))
+
+                    link_f_add_todas = "\n".join(links_fotos_ext_add) if links_fotos_ext_add else "N/A"
+                    dados_ext_add = dados_ext_add if dados_ext_add else "Nenhum extravasor adicional."
 
                     # 3. Conecta ao Sheets e salva
                     credenciais_json = json.loads(st.secrets["google_json"])
@@ -288,12 +310,21 @@ Causas: {', '.join(d[f'causa_{i}'])} | Freq: {d[f'freq_{i}']} ev/mês | Medidor:
                     dados = [
                         datetime.now().strftime("%d/%m/%Y %H:%M:%S"), eee_selecionada, data_vistoria.strftime("%d/%m/%Y"), 
                         responsavel, operador_igua, coordenadas, sub_bacia, l_cad, 
-                        qtd_extravasores, dados_extravasores_compilados, link_f_ext_todas,
+                        qtd_extravasores, 
+                        
+                        # As 20 Colunas Dedicadas ao Extravasor 1
+                        ext1_loc, ext1_reg, ext1_mat, ext1_dest, ext1_sensivel, ext1_flap, ext1_grade, ext1_reto, 
+                        ext1_mare, ext1_cota_mare, ext1_formato, ext1_dim, ext1_cota_ent, ext1_cota_sai, ext1_comp, ext1_incl, 
+                        ext1_causas, ext1_freq, ext1_medidor, ext1_foto,
+                        
+                        # Colunas dos Extravasores Adicionais
+                        dados_ext_add, link_f_add_todas,
+                        
                         scada_hist, vazao_min, vazao_med, vazao_max, bombas, niveis_poco, l_ope, 
                         energia_disp, gerador, aterramento, quedas, solar, distancia_qgbt, tensao, ", ".join(necessidade_energia), l_ele, 
                         clp_existente, ligado_cco, telemetria, protocolo, sinal_tipo, sinal, pontos_io, l_aut, 
-                        espaco_confinado, gas_h2s, comunidade, risco_alagamento, risco_intemperie, risco_vandalismo, riscos_outros, l_seg, 
-                        sugestao_tec, as_built, pendencias, l_doc, link_pasta
+                        espaco_confinado, gas_h2s, comunidade, "Sim" if risco_alagamento else "Não", "Sim" if risco_intemperie else "Não", "Sim" if risco_vandalismo else "Não", riscos_outros, l_seg, 
+                        sugestao_tec, "Sim" if as_built else "Não", pendencias, l_doc, link_pasta
                     ]
                     
                     aba_master.append_row(dados)
