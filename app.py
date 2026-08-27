@@ -10,7 +10,6 @@ from streamlit_geolocation import streamlit_geolocation
 st.set_page_config(page_title="Vistoria EEE - Saneflow", page_icon="💧", layout="centered")
 
 # --- MENSAGEM DE SUCESSO PÓS-RESET ---
-# Se o app acabou de ser reiniciado após um envio, mostra a mensagem
 if 'sucesso_envio' in st.session_state:
     st.success(st.session_state.sucesso_envio)
     del st.session_state.sucesso_envio
@@ -69,7 +68,6 @@ with tab1:
     sub_bacia = st.text_input("Sub-bacia")
     st.subheader("📸 Fotos Gerais")
     foto_cadastro = st.file_uploader("Anexe fotos da fachada", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-    
 
 with tab2:
     st.header("2. Extravasor (Hidráulica e Civil)")
@@ -116,18 +114,15 @@ with tab2:
             with col_j: st.number_input("Comprimento (m)", value=1.0, min_value=0.01, format="%.2f", key=f"comp_{i}")
             
             st.file_uploader(f"📸 Fotos Obrigatórias (Ext. {i+1})", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'], key=f"f_ext_{i}")
-            
 
 with tab3:
     st.header("3. Regime Operacional")
     
-st.markdown("**Histórico de Extravasamentos (Por ponto)**")
+    st.markdown("**Histórico de Extravasamentos (Por ponto)**")
     for i in range(qtd_extravasores):
         st.markdown(f"*Extravasor {i+1}:*")
         
         causas = st.multiselect("Causas prováveis", ["Falta de energia", "Falha de bomba", "Chuva", "Maré", "Entupimento", "Outra"], key=f"causa_{i}")
-        
-        # Abre o campo de texto condicionalmente se "Outra" estiver na lista
         if "Outra" in causas:
             st.text_input("Especifique a outra causa:", key=f"causa_outro_{i}")
             
@@ -149,8 +144,7 @@ st.markdown("**Histórico de Extravasamentos (Por ponto)**")
     bombas = st.text_input("Nº e potência das bombas (ex: 2x 15cv)")
     niveis_poco = st.text_input("Níveis de partida/parada e volume do poço")
     foto_operacional = st.file_uploader("📸 Evidências Operacionais", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-    
-    
+
 with tab4:
     st.header("4. Infraestrutura Elétrica")
     energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial", "Outra"])
@@ -176,8 +170,7 @@ with tab4:
         if nec_extra: necessidade_energia.append(nec_extra)
         
     foto_eletrica = st.file_uploader("📸 Fotos do Painel Elétrico", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-    
-    
+
 with tab5:
     st.header("5. Automação e Telemetria")
     clp_existente = st.text_input("Existência de CLP/RTU/SCADA (Marca/Modelo)")
@@ -195,8 +188,6 @@ with tab5:
     sinal = st.slider("Qualidade do Sinal 3G/4G (0 a 10)", 0, 10, 5)
     pontos_io = st.text_input("Pontos de I/O disponíveis")
     foto_automacao = st.file_uploader("📸 Fotos da Automação", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-    
-    
 
 with tab6:
     st.header("6. Acessibilidade e Segurança")
@@ -211,7 +202,6 @@ with tab6:
     
     riscos_outros = st.text_area("Outros Riscos presentes e EPIs:")
     foto_seguranca = st.file_uploader("📸 Fotos de Segurança", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
-    
 
 with tab7:
     st.header("7. Documentação e Fechamento")
@@ -286,7 +276,15 @@ with tab7:
                         ext_cota_sai = d.get(f'cota_sai_{i}', 0.0)
                         ext_comp = d.get(f'comp_{i}', 1.0)
                         ext_incl = ((ext_cota_ent - ext_cota_sai) / ext_comp) * 100 if ext_comp > 0 else 0
-                        ext_causas = ", ".join(d.get(f'causa_{i}', []))
+                        
+                        # Tratamento da lista de Causas para inserir o "Outra"
+                        lista_causas = d.get(f'causa_{i}', []).copy()
+                        if "Outra" in lista_causas:
+                            causa_extra = d.get(f'causa_outro_{i}', '')
+                            if causa_extra:
+                                lista_causas[lista_causas.index("Outra")] = causa_extra
+                        ext_causas = ", ".join(lista_causas)
+                        
                         ext_freq = d.get(f'freq_{i}', 0)
                         ext_medidor_exist = d.get(f'medidor_exist_{i}', 'Não')
                         ext_medidor = d.get(f'qual_med_{i}', '') if ext_medidor_exist == "Sim" else "Não"
@@ -323,7 +321,6 @@ with tab7:
                     planilha = conta_robo_planilha.open("Base_Dados_Vistorias_App")
                     aba_master = planilha.worksheet("Base_Master")
                     
-                    # O gspread permite salvar várias linhas simultaneamente usando append_rows
                     aba_master.append_rows(lista_de_linhas)
                     
                     # 4. RESET E REDIRECIONAMENTO AUTOMÁTICO
