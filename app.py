@@ -125,7 +125,7 @@ with tab3:
     
     st.markdown("---")
     st.markdown("**Operação Geral da EEE**")
-    scada_hist = st.radio("SCADA possui histórico de horas de operação/partidas?", ["Sim", "Não", "Não sei informar"])
+    scada_hist = st.radio("SCADA possui histórico de horas de operação/partidas?", ["Sim", "Não", "A Validar"])
     
     col3, col4, col5 = st.columns(3)
     with col3: vazao_min = st.number_input("Vazão Mín. (L/s)", min_value=0.0)
@@ -141,10 +141,10 @@ with tab4:
     energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial", "Outra"])
     if energia_disp == "Outra": energia_disp = st.text_input("Especifique a energia:")
         
-    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Não possui", "Outro"])
+    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Sim - Gerador e No-break", "Não possui", "Outro"])
     if gerador == "Outro": gerador = st.text_input("Especifique gerador/no-break:")
         
-    aterramento = st.selectbox("Aterramento adequado?", ["Sim", "Não", "Não sei avaliar", "Outro"])
+    aterramento = st.selectbox("Aterramento adequado?", ["Sim", "Não", "Outro"])
     if aterramento == "Outro": aterramento = st.text_input("Especifique o aterramento:")
         
     quedas = st.radio("Quedas de energia frequentes?", ["Sim", "Não", "Desconhecido"])
