@@ -72,13 +72,19 @@ with tab2:
         with st.expander(f"🔹 DADOS DO EXTRAVASOR {i+1}", expanded=True):
             col_a, col_b = st.columns(2)
             with col_a:
-                st.selectbox("Localização *", ["Selecione...", "Poço de sucção", "Câmara de chegada", "By-pass", "Após reservatório de acumulação"], key=f"loc_{i}")
-                st.selectbox("Regime *", ["Selecione...", "Livre", "Afogado", "Intermitente"], key=f"regime_{i}")
-                st.selectbox("Material", ["Concreto", "Alvenaria", "PVC", "Outros"], key=f"mat_{i}")
+                loc_val = st.selectbox("Localização *", ["Selecione...", "Poço de sucção", "Câmara de chegada", "By-pass", "Após reservatório de acumulação", "Outro"], key=f"loc_{i}")
+                if loc_val == "Outro": st.text_input("Qual localização?", key=f"loc_outro_{i}")
+                
+                regime_val = st.selectbox("Regime *", ["Selecione...", "Livre", "Afogado", "Intermitente", "Outro"], key=f"regime_{i}")
+                if regime_val == "Outro": st.text_input("Qual regime?", key=f"regime_outro_{i}")
+                
+                mat_val = st.selectbox("Material", ["Concreto", "Alvenaria", "PVC", "Outro"], key=f"mat_{i}")
+                if mat_val == "Outro": st.text_input("Qual material?", key=f"mat_outro_{i}")
+                
             with col_b:
-                dest = st.selectbox("Destino do esgoto *", ["Selecione...", "Lagoa", "Canal", "Mar/Orla", "Galeria de drenagem", "Outro"], key=f"dest_{i}")
-                if dest == "Outro":
-                    st.text_input("Qual o outro destino?", key=f"dest_outro_{i}")
+                dest_val = st.selectbox("Destino do esgoto *", ["Selecione...", "Lagoa", "Canal", "Mar/Orla", "Galeria de drenagem", "Outro"], key=f"dest_{i}")
+                if dest_val == "Outro": st.text_input("Qual o outro destino?", key=f"dest_outro_{i}")
+                
                 st.checkbox("Área ambientalmente sensível?", key=f"sensivel_{i}")
 
             col_c, col_d, col_e = st.columns(3)
@@ -92,7 +98,8 @@ with tab2:
                 if mare == "Sim":
                     st.number_input("Cota de nível máx (m)", value=0.0, format="%.2f", key=f"cota_mare_{i}")
             with col_g:
-                st.selectbox("Formato", ["Vertedor", "Tubo", "Canal", "Caixa", "Outro"], key=f"formato_{i}")
+                formato_val = st.selectbox("Formato", ["Vertedor", "Tubo", "Canal", "Caixa", "Outro"], key=f"formato_{i}")
+                if formato_val == "Outro": st.text_input("Qual formato?", key=f"formato_outro_{i}")
                 st.number_input("Dimensão (m)", min_value=0.0, format="%.2f", key=f"dim_{i}")
 
             st.markdown("**Níveis e Inclinação**")
@@ -109,11 +116,11 @@ with tab3:
     st.markdown("**Histórico de Extravasamentos (Por ponto)**")
     for i in range(qtd_extravasores):
         st.markdown(f"*Extravasor {i+1}:*")
-        st.multiselect("Causas prováveis", ["Falta de energia", "Falha de bomba", "Chuva", "Maré", "Entupimento"], key=f"causa_{i}")
+        st.multiselect("Causas prováveis", ["Falta de energia", "Falha de bomba", "Chuva", "Maré", "Entupimento", "Outra"], key=f"causa_{i}")
         col_k, col_l = st.columns(2)
         with col_k: st.number_input("Frequência (Eventos/mês)", min_value=0, value=0, key=f"freq_{i}")
         with col_l:
-            medidor = st.radio("Medidor de extravasamento existente?", ["Sim", "Não"], key=f"medidor_exist_{i}")
+            medidor = st.radio("Medidor existente?", ["Sim", "Não"], key=f"medidor_exist_{i}")
             if medidor == "Sim": st.text_input("Qual medidor?", key=f"qual_med_{i}")
     
     st.markdown("---")
@@ -131,24 +138,44 @@ with tab3:
 
 with tab4:
     st.header("4. Infraestrutura Elétrica")
-    energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial"])
-    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Não possui"])
-    aterramento = st.selectbox("Aterramento adequado?", ["Sim", "Não", "Não sei avaliar"])
+    energia_disp = st.selectbox("Energia no ponto? *", ["Selecione...", "Sim", "Não", "Parcial", "Outra"])
+    if energia_disp == "Outra": energia_disp = st.text_input("Especifique a energia:")
+        
+    gerador = st.selectbox("Possui Gerador / No-break? *", ["Selecione...", "Sim - Gerador", "Sim - No-break", "Não possui", "Outro"])
+    if gerador == "Outro": gerador = st.text_input("Especifique gerador/no-break:")
+        
+    aterramento = st.selectbox("Aterramento adequado?", ["Sim", "Não", "Não sei avaliar", "Outro"])
+    if aterramento == "Outro": aterramento = st.text_input("Especifique o aterramento:")
+        
     quedas = st.radio("Quedas de energia frequentes?", ["Sim", "Não", "Desconhecido"])
     solar = st.selectbox("Viabilidade p/ energia solar?", ["Sim", "Não", "Talvez"])
     
     distancia_qgbt = st.number_input("Distância ao QGBT (metros)", min_value=0.0)
-    tensao = st.selectbox("Tensão disponível", ["110V", "220V", "380V", "440V", "N/A"])
+    
+    tensao = st.selectbox("Tensão disponível", ["110V", "220V", "380V", "440V", "N/A", "Outra"])
+    if tensao == "Outra": tensao = st.text_input("Especifique a tensão:")
+        
     necessidade_energia = st.multiselect("Outras necessidades", ["Alimentação dedicada", "Aterramento/DPS", "Outra"])
+    if "Outra" in necessidade_energia: 
+        nec_extra = st.text_input("Qual outra necessidade?")
+        if nec_extra: necessidade_energia.append(nec_extra)
+        
     foto_eletrica = st.file_uploader("📸 Fotos do Painel Elétrico", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
 
 with tab5:
     st.header("5. Automação e Telemetria")
     clp_existente = st.text_input("Existência de CLP/RTU/SCADA (Marca/Modelo)")
     ligado_cco = st.radio("A EEE já é monitorada no CCO?", ["Sim", "Não"])
-    telemetria = st.selectbox("Meio de Comunicação", ["Nenhuma", "Celular (3G/4G)", "Rádio", "Fibra Óptica"])
+    
+    telemetria = st.selectbox("Meio de Comunicação", ["Nenhuma", "Celular (3G/4G)", "Rádio", "Fibra Óptica", "Outro"])
+    if telemetria == "Outro": telemetria = st.text_input("Especifique a comunicação:")
+        
     protocolo = st.selectbox("Protocolo", ["Nenhum", "Modbus", "DNP3", "OPC", "MQTT", "Outro"])
-    sinal_tipo = st.selectbox("Tipo de sinal suportado", ["4-20 mA", "Digital", "Ambos", "N/A"])
+    if protocolo == "Outro": protocolo = st.text_input("Especifique o protocolo:")
+        
+    sinal_tipo = st.selectbox("Tipo de sinal suportado", ["4-20 mA", "Digital", "Ambos", "N/A", "Outro"])
+    if sinal_tipo == "Outro": sinal_tipo = st.text_input("Especifique o sinal:")
+        
     sinal = st.slider("Qualidade do Sinal 3G/4G (0 a 10)", 0, 10, 5)
     pontos_io = st.text_input("Pontos de I/O disponíveis")
     foto_automacao = st.file_uploader("📸 Fotos da Automação", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
@@ -169,7 +196,9 @@ with tab6:
 
 with tab7:
     st.header("7. Documentação e Fechamento")
-    sugestao_tec = st.selectbox("Sugestão da Tecnologia (Opcional)", ["Deixar em branco", "Radar", "Ultrassônico", "Pressão (Nível)", "Inclinômetro (Flap)"])
+    sugestao_tec = st.selectbox("Sugestão da Tecnologia (Opcional)", ["Deixar em branco", "Radar", "Ultrassônico", "Pressão (Nível)", "Inclinômetro (Flap)", "Outra"])
+    if sugestao_tec == "Outra": sugestao_tec = st.text_input("Especifique a tecnologia sugerida:")
+        
     as_built = st.checkbox("Projeto as-built conferido no local?")
     pendencias = st.text_area("Pendências e observações finais:")
     foto_doc = st.file_uploader("📸 Anexe croquis", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
@@ -216,16 +245,25 @@ with tab7:
                     dados_extravasores_compilados = ""
                     links_fotos_extravasores = []
                     
+                    d = st.session_state
+                    
+                    def resolve_outro(campo, indice):
+                        valor = d.get(f'{campo}_{indice}')
+                        return d.get(f'{campo}_outro_{indice}', valor) if valor == "Outro" else valor
+                    
                     for i in range(qtd_extravasores):
-                        # Pega os dados armazenados na memória (session_state) do Streamlit
-                        d = st.session_state
-                        dest_final = d[f'dest_outro_{i}'] if d[f'dest_{i}'] == "Outro" else d[f'dest_{i}']
+                        loc_final = resolve_outro('loc', i)
+                        regime_final = resolve_outro('regime', i)
+                        mat_final = resolve_outro('mat', i)
+                        dest_final = resolve_outro('dest', i)
+                        formato_final = resolve_outro('formato', i)
+                        
                         inclinacao = ((d[f'cota_ent_{i}'] - d[f'cota_sai_{i}']) / d[f'comp_{i}']) * 100
                         
                         bloco = f"""--- PONTO {i+1} ---
-Local: {d[f'loc_{i}']} | Regime: {d[f'regime_{i}']}
+Local: {loc_final} | Regime: {regime_final}
 Destino: {dest_final} | Amb. Sensível: {d[f'sensivel_{i}']}
-Material: {d[f'mat_{i}']} | Formato: {d[f'formato_{i}']} | Dim: {d[f'dim_{i}']}m
+Material: {mat_final} | Formato: {formato_final} | Dim: {d[f'dim_{i}']}m
 Flap: {d[f'flap_{i}']} | Grade: {d[f'grade_{i}']} | Trecho Reto: {d[f'reto_{i}']}
 Inclinação: {inclinacao:.2f}% (Ent: {d[f'cota_ent_{i}']}, Sai: {d[f'cota_sai_{i}']}, Comp: {d[f'comp_{i}']})
 Maré: {d[f'mare_{i}']}
