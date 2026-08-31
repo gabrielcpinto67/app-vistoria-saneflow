@@ -39,7 +39,7 @@ lista_eees = [
     "Beira Rio I", "Beira Rio II", "Benvindo de Novaes", "Cascatinha", "Centro Metropolitano", 
     "Curicica", "Eugênio Macedo", "Hermes de Lima", "Lagoa da Tijuca", "Mont Serrat I", 
     "Mont Serrat II", "Olof Palme", "Península", "Pontal Oceânico", "Santa América", 
-    "Jose Duarte", "Vila da Amizade", "CTS Canal das Taxas", "Chico City"
+    "Jose Duarte", "Vila da Amizade", "CTS Canal das Taxas", "Chico City", "ETE BARRA"
 ]
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
